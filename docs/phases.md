@@ -15,7 +15,7 @@ Phases 0–8 below are the full design; the MVP covers the core of Phases 0–3 
 
 ---
 
-Each phase ends with something **working end to end** that you can demo, and a short entry in `docs/learning-log.md` (what you learned, what broke, what you'd do differently).
+Each phase ends with something **working end to end** that you can demo.
 
 **Core = Phases 0–7.** That's a complete, interview-ready platform. Phase 8 is enterprise hardening; stretch work is optional.
 

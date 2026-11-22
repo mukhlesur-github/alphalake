@@ -20,3 +20,6 @@ infra/snowflake/setup.sql
 # Snowsight Workspace scratch files
 Untitled*.sql
 pytest-cache-files-*/
+# Snowsight Workspace folder markers / dbt per-user id
+.folder
+dbt/.user.yml
