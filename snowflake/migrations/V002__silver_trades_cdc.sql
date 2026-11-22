@@ -7,9 +7,6 @@ CREATE STREAM IF NOT EXISTS ALPHALAKE.BRONZE.TRADE_EVENTS_RAW_STREAM
   ON TABLE ALPHALAKE.BRONZE.TRADE_EVENTS_RAW APPEND_ONLY = TRUE;
 
 CREATE TRANSIENT TABLE IF NOT EXISTS TRADE_EVENTS_BATCH (raw VARIANT, _file STRING, _loaded_at TIMESTAMP_LTZ);
--- Work table for the latest event per touched trade (transient table, not TEMP: DDL inside the
--- procedure's explicit transaction would implicitly commit it).
-CREATE TRANSIENT TABLE IF NOT EXISTS TRADES_TOUCHED LIKE TRADE_EVENTS;
 
 CREATE TABLE IF NOT EXISTS QUARANTINE_TRADE_EVENTS (
   raw VARIANT, reason STRING, _file STRING, quarantined_at TIMESTAMP_LTZ);
@@ -20,6 +17,10 @@ CREATE TABLE IF NOT EXISTS TRADE_EVENTS (
   currency STRING, broker_id STRING, broker_name STRING, trade_date DATE,
   commission FLOAT, sec_fee FLOAT, settle_date DATE, schema_version STRING, fills VARIANT,
   _file STRING, _loaded_at TIMESTAMP_LTZ);
+
+-- Work table for the latest event per touched trade (transient table, not TEMP: DDL inside the
+-- procedure's explicit transaction would implicitly commit it).
+CREATE TRANSIENT TABLE IF NOT EXISTS TRADES_TOUCHED LIKE TRADE_EVENTS;
 
 CREATE TABLE IF NOT EXISTS TRADE_FILLS (
   trade_id STRING, fill_id STRING, qty FLOAT, price FLOAT, venue STRING, fill_ts TIMESTAMP_NTZ);

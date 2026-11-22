@@ -26,12 +26,12 @@ def smoke() -> None:
 
     def embed():
         c = connect_pipeline().cursor()
-        v = c.execute("SELECT SNOWFLAKE.CORTEX.EMBED_TEXT_1024('snowflake-arctic-embed-l-v2.0', 'hello')").fetchone()[0]
+        v = c.execute("SELECT AI_EMBED('snowflake-arctic-embed-l-v2.0', 'hello')").fetchone()[0]
         return f"vector dim {len(v)}"
 
     def complete():
         c = connect_pipeline().cursor()
-        return c.execute("SELECT SNOWFLAKE.CORTEX.COMPLETE(%s, 'Reply with the single word ok')",
+        return c.execute("SELECT AI_COMPLETE(%s, 'Reply with the single word ok')",
                          (s.cortex_llm_model,)).fetchone()[0].strip()[:40]
 
     def stage():
@@ -44,7 +44,8 @@ def smoke() -> None:
         s3_client().head_bucket(Bucket=s.alphalake_bucket)
         return f"s3://{s.alphalake_bucket} reachable with profile {s.aws_profile}"
 
-    ok = [_check(n, f) for n, f in [("snowflake pipeline key-pair", pipeline), ("snowflake app persona", persona),
-                                    ("cortex embed", embed), (f"cortex complete ({s.cortex_llm_model})", complete),
-                                    ("aws s3", s3), ("external stage", stage)]]
+    checks = [("snowflake pipeline key-pair", pipeline), ("snowflake app persona", persona),
+              ("cortex embed", embed), (f"cortex complete ({s.cortex_llm_model})", complete)]
+    checks += [("aws s3", s3), ("external stage", stage)] if s.landing_mode == "s3" else [("internal stage", stage)]
+    ok = [_check(n, f) for n, f in checks]
     raise SystemExit(0 if all(ok) else 1)

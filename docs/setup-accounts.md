@@ -7,10 +7,10 @@ they live in `.env` and `keys/` (both git-ignored).
 
 | Thing | Value | Where it's used |
 |---|---|---|
-| AWS region | `us-west-2` (Oregon) | `.env` `AWS_REGION`, `terraform.tfvars` |
+| AWS region | `ap-southeast-1` (Singapore) | `.env` `AWS_REGION`, `terraform.tfvars` |
 | AWS CLI profile | `alphalake` | `.env` `AWS_PROFILE`, Terraform provider |
 | S3 bucket | `alphalake-landing-<your-aws-account-id>` (Terraform creates it) | auto-written to `.env` |
-| Snowflake edition / cloud / region | **Enterprise**, **AWS**, **US West (Oregon)** | trial signup |
+| Snowflake edition / cloud / region | **Enterprise**, **AWS**, **Asia Pacific (Singapore)** | trial signup |
 | Snowflake account identifier | `<ORGNAME>-<ACCOUNTNAME>` (Snowsight → Admin → Accounts) | `.env` `SNOWFLAKE_ACCOUNT`, `terraform.tfvars` |
 | Snowflake database | `ALPHALAKE` (schemas `BRONZE SILVER GOLD SEMANTIC DOCS AUDIT`) | Terraform creates |
 | Warehouses | `ALPHALAKE_WH_PIPELINE`, `ALPHALAKE_WH_APP` (X-Small, 60 s auto-suspend) | Terraform creates |
@@ -24,7 +24,7 @@ Your human Snowflake login can be any name; it's only used once to run the boots
 
 ## 1. Snowflake trial (≈5 min)
 
-1. Sign up at signup.snowflake.com → **Enterprise**, **AWS**, **US West (Oregon)**.
+1. Sign up at signup.snowflake.com → **Enterprise**, **AWS**, **Asia Pacific (Singapore)**.
 2. Note the account identifier `<ORGNAME>-<ACCOUNTNAME>` (Snowsight → Admin → Accounts → hover the account → copy identifier; use a dash, not a dot).
 3. Run `make bootstrap-sql` locally, open `infra/bootstrap/bootstrap.sql`, paste it into a Snowsight worksheet, **Run All** as `ACCOUNTADMIN`.
    It creates `SVC_ALPHALAKE_TERRAFORM` with your public key, enables Cortex cross-region, and checks that `EMBED_TEXT_1024` and `COMPLETE` work.
@@ -36,7 +36,7 @@ Your human Snowflake login can be any name; it's only used once to run the boots
 2. IAM Identity Center → enable → create a user for yourself with the `AdministratorAccess` permission set on this account.
 3. Install the CLI (`brew install awscli`, or the pkg from aws.amazon.com/cli if Homebrew is stuck) and run:
    ```bash
-   aws configure sso --profile alphalake     # region us-west-2
+   aws configure sso --profile alphalake     # region ap-southeast-1
    aws sts get-caller-identity --profile alphalake
    ```
 
@@ -55,4 +55,4 @@ Then follow the [runbook](runbook.md).
 ## Teardown (day 30 at the latest)
 
 `make destroy` → in Snowsight `DROP DATABASE ALPHALAKE; DROP USER SVC_ALPHALAKE_TERRAFORM;` → close the AWS account
-(Billing → Account → Close) and let the Snowflake trial expire.
+(Billing → Account → Close) and let the Snowflake trial

@@ -12,11 +12,18 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=ROOT / ".env", extra="ignore")
 
     aws_profile: str = "alphalake"
-    aws_region: str = "us-west-2"
+    aws_region: str = "ap-southeast-1"
     alphalake_bucket: str = ""
+    # "internal" = Snowflake internal stage + COPY task (no AWS); "s3" = S3 + Snowpipe auto-ingest
+    landing_mode: str = "internal"
+    # "policies" = masking + row access policies (Enterprise); "views" = secure-view fallback (Standard)
+    governance_mode: str = "policies"
 
     snowflake_account: str = ""
     snowflake_database: str = "ALPHALAKE"
+    # "keypair" = service users (laptop/CI); "session" = Snowsight sandbox OAuth token + USE ROLE;
+    # "sis" = Streamlit in Snowflake (the app owner's session, one app per persona)
+    snowflake_auth: str = "keypair"
 
     snowflake_pipeline_user: str = "SVC_ALPHALAKE_PIPELINE"
     snowflake_pipeline_key: Path = Path("keys/svc_alphalake_pipeline.p8")
@@ -27,7 +34,7 @@ class Settings(BaseSettings):
     snowflake_app_key: Path = Path("keys/svc_alphalake_app.p8")
     snowflake_app_warehouse: str = "ALPHALAKE_WH_APP"
 
-    cortex_llm_model: str = "openai-gpt-4.1"
+    cortex_llm_model: str = "claude-sonnet-4-5"
 
     data_dir: Path = ROOT / "data"
     seed: int = 42

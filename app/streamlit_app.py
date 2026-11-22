@@ -1,12 +1,32 @@
-"""AlphaLake Streamlit app (local). Every query runs under the persona chosen in the sidebar,
-so masking, row access and document tiers visibly change what the same question returns."""
+"""AlphaLake Streamlit app. Locally, every query runs under the persona chosen in the sidebar; in Streamlit in
+Snowflake (warehouse runtime) the app runs as its owner role, so there is one app per persona.
+Either way masking, row access and document tiers visibly change what the same question returns."""
 
-import altair as alt
-import pandas as pd
-import streamlit as st
+import os
+import sys
+from pathlib import Path
 
-from alphalake.agent.graph import ask
-from alphalake.common.snowflake import PERSONA_ROLES, connect_as_persona, connect_pipeline
+
+def _sis_role() -> str | None:
+    """Owner role when running inside Streamlit in Snowflake, else None (local run)."""
+    try:
+        from snowflake.snowpark.context import get_active_session
+        return get_active_session().sql("SELECT CURRENT_ROLE()").collect()[0][0]
+    except Exception:  # noqa: BLE001 -- no active session means a local `streamlit run`
+        return None
+
+
+SIS_ROLE = _sis_role()
+if SIS_ROLE:
+    os.environ["SNOWFLAKE_AUTH"] = "sis"  # read by alphalake settings on first use
+    sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))  # package uploaded next to the app
+
+import altair as alt  # noqa: E402
+import pandas as pd  # noqa: E402
+import streamlit as st  # noqa: E402
+
+from alphalake.agent.graph import ask  # noqa: E402
+from alphalake.common.snowflake import PERSONA_ROLES, connect_as_persona, connect_pipeline  # noqa: E402
 
 # Reference palette (dataviz skill): one series hue, recessive ink, reserved status colours.
 BLUE, INK_2, MUTED, CRITICAL, GOOD = "#2a78d6", "#52514e", "#898781", "#d03b3b", "#0ca30c"
@@ -40,7 +60,12 @@ def axis_theme(chart):
 
 with st.sidebar:
     st.title("AlphaLake")
-    role = st.radio("Persona (Snowflake role)", PERSONA_ROLES, help="All queries run under this role")
+    if SIS_ROLE:
+        role = SIS_ROLE
+        st.markdown(f"**Persona:** `{role}`")
+        st.caption("This app runs as its owner role. Open the other AlphaLake app to compare personas.")
+    else:
+        role = st.radio("Persona (Snowflake role)", PERSONA_ROLES, help="All queries run under this role")
     st.caption("PM: PII visible, restricted documents searchable.  \nAnalyst: PII masked, no institutional "
                "clients, no restricted documents.")
 
@@ -138,6 +163,10 @@ with tab_clients:
     st.dataframe(seg, hide_index=True)
 
 with tab_pipeline:
+    if SIS_ROLE:
+        st.info("The pipeline view needs ALPHALAKE_ENGINEER, which persona apps don't have. "
+                "Run the app locally (`make app`) for this tab.")
+        st.stop()
     st.caption("Engineer view (ALPHALAKE_ENGINEER), shown regardless of persona.")
     st.subheader("Task runs (last 24h)")
     st.dataframe(q("""SELECT name, state, scheduled_time, completed_time, return_value, error_message

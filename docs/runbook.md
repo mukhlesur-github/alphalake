@@ -4,7 +4,8 @@ Prerequisite: [setup-accounts.md](setup-accounts.md) done. Each step says which 
 
 | # | Command | What happens / what it proves |
 |---|---|---|
-| 1 | `make tf-init && make tf-apply` | S3 bucket, IAM role, storage integration, database + schemas, warehouses, resource monitor, roles, grants, service users. **Handshake:** the IAM role trusts the integration's IAM user *and* our chosen external ID, so Terraform creates both sides in one apply. Bucket name is written to `.env`. |
+| 0 | `make snowflake-sql`, then run `infra/snowflake/setup.sql` as ACCOUNTADMIN | Database + schemas, warehouses, resource monitor, roles, grants, service users, storage integration `ALPHALAKE_S3_INT` (our chosen external ID). Copy `STORAGE_AWS_IAM_USER_ARN` from `DESC INTEGRATION ALPHALAKE_S3_INT` into `terraform.tfvars`. |
+| 1 | `make tf-init && make tf-apply` | AWS only: S3 bucket, IAM role, budget. **Handshake:** the IAM role trusts the integration's IAM user *and* our chosen external ID. Bucket name is written to `.env`. |
 | 2 | `make smoke` | Key-pair auth for both service users, persona role with secondary roles off, Cortex embed + complete, S3 access. (`external stage` fails until step 3.) |
 | 3 | `make migrate` | Stage, Bronze tables, 9 Snowpipes, streams, CDC + SCD2 + docs procedures and tasks, two Cortex Search services, masking/row-access policies, audit table. |
 | 4 | `make wire-snowpipe` | Reads the Snowpipe SQS ARN (`SHOW PIPES` → `notification_channel`) and re-applies Terraform so `s3:ObjectCreated` under `landing/` notifies it. Second apply because the queue only exists once a pipe does. |
@@ -33,3 +34,12 @@ Prerequisite: [setup-accounts.md](setup-accounts.md) done. Each step says which 
 | SCD2 snapshot skipped | `SILVER.QUARANTINE_SECURITIES` with reason "older than SCD2 watermark" |
 | Agent errors | `flags` in the answer / `AUDIT.AGENT_INTERACTIONS.guardrail_flags`; try another `CORTEX_LLM_MODEL` |
 | Credits | Snowsight → Admin → Cost Management; `ALPHALAKE_RM` suspends warehouses at 95% |
+
+### Switched to S3 (2026-11-22)
+
+`BRONZE.LANDING` is now the S3 stage on `s3://alphalake-landing-795031850612/landing/` (integration `ALPHALAKE_S3_INT`,
+AWS account 795031850612, ap-southeast-1) with 9 auto-ingest pipes; the bucket notification on `landing/` targets the
+pipes' SQS queue (`SHOW PIPES` -> `notification_channel`). The former internal stage is kept as `BRONZE.LANDING_INTERNAL`;
+history was moved with `COPY FILES` *before* the notification existed, so nothing was loaded twice. Never run
+`ALTER PIPE ... REFRESH` on these pipes (it would reload history). From the sandbox, uploads relay
+`PUT @LANDING_INTERNAL` -> `COPY FILES` -> S3; from a laptop with AWS credentials, `make upload` writes to S3 directly.

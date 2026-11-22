@@ -1,5 +1,5 @@
 """Snowflake-backed dependencies for the agent, all executed on ONE persona connection:
-LLM = Cortex COMPLETE, SQL = SEMANTIC views, retrieval = Cortex Search. Nothing runs as a superuser."""
+LLM = AI_COMPLETE, SQL = SEMANTIC views, retrieval = Cortex Search. Nothing runs as a superuser."""
 
 import json
 import re
@@ -24,12 +24,16 @@ class SnowflakeBackend:
         self.model = get_settings().cortex_llm_model
 
     def llm(self, messages: list[dict], max_tokens: int = 1200) -> str:
+        # AI_COMPLETE takes one prompt string (legacy SNOWFLAKE.CORTEX.COMPLETE is blocked on new accounts),
+        # so the chat turns are flattened into role-labelled sections.
+        prompt = "\n\n".join(f"[{m['role'].upper()}]\n{m['content']}" for m in messages) + "\n\n[ASSISTANT]\n"
         cur = self.conn.cursor()
         row = cur.execute(
-            "SELECT SNOWFLAKE.CORTEX.COMPLETE(%s, PARSE_JSON(%s), PARSE_JSON(%s))",
-            (self.model, json.dumps(messages), json.dumps({"temperature": 0, "max_tokens": max_tokens})),
+            "SELECT AI_COMPLETE(%s, %s, PARSE_JSON(%s))",
+            (self.model, prompt, json.dumps({"temperature": 0, "max_tokens": max_tokens})),
         ).fetchone()
-        return json.loads(row[0])["choices"][0]["messages"]
+        out = row[0]  # returned as a JSON-encoded string (VARIANT), e.g. '"ok"'
+        return json.loads(out) if isinstance(out, str) and out.startswith('"') else out
 
     def query(self, sql: str, params: dict | None = None) -> list[dict]:
         from snowflake.connector import DictCursor

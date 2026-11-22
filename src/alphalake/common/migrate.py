@@ -1,6 +1,6 @@
 """Minimal versioned migration runner (schemachange-style): V###__name.sql applied once, in order.
 
-Files are Jinja-rendered with {bucket}; applied versions + checksums live in AUDIT.MIGRATION_HISTORY.
+Files are Jinja-rendered with {bucket, landing_mode}; applied versions + checksums live in AUDIT.MIGRATION_HISTORY.
 """
 
 import hashlib
@@ -16,7 +16,9 @@ MIGRATIONS = ROOT / "snowflake" / "migrations"
 
 
 def render(path) -> str:
-    return Template(path.read_text()).render(bucket=get_settings().alphalake_bucket)
+    return Template(path.read_text()).render(bucket=get_settings().alphalake_bucket,
+                                         landing_mode=get_settings().landing_mode,
+                                         governance_mode=get_settings().governance_mode)
 
 
 def statements(sql: str) -> list[str]:
@@ -29,7 +31,7 @@ def migrate(dry_run: bool = False) -> None:
         for f in files:
             print(f"{f.name}: {len(statements(render(f)))} statements")
         return
-    if not get_settings().alphalake_bucket:
+    if get_settings().landing_mode == "s3" and not get_settings().alphalake_bucket:
         raise SystemExit("ALPHALAKE_BUCKET is empty -- run `make tf-output` first")
 
     from alphalake.common.snowflake import connect_pipeline

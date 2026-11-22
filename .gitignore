@@ -16,4 +16,4 @@ dbt/logs/
 dbt/dbt_packages/
 .ruff_cache/
 .pytest_cache/
-infra/bootstrap/bootstrap.sql
+infra/snowflake/setup.sql

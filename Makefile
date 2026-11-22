@@ -25,13 +25,13 @@ lint:
 	$(PY) ruff check src tests app
 
 # ---- one-time account wiring ------------------------------------------------------------
-bootstrap-sql:  ## render infra/bootstrap/bootstrap.sql to paste into Snowsight (ACCOUNTADMIN)
-	$(PY) python scripts/render_bootstrap.py
+snowflake-sql:  ## render infra/snowflake/setup.sql (roles, warehouses, users, integration) to run as ACCOUNTADMIN
+	$(PY) python scripts/render_snowflake_setup.py
 tf-init:
 	$(TF) init
 tf-plan:  ## terraform plan (AWS + Snowflake)
 	$(TF) plan
-tf-apply:  ## create bucket, IAM role, storage integration, RBAC, warehouses, users
+tf-apply:  ## AWS only: bucket, IAM role (trusts ALPHALAKE_S3_INT), budget
 	$(TF) apply
 	$(PY) python scripts/set_env_from_tf.py
 migrate:  ## apply snowflake/migrations (stage, pipes, streams, tasks, procs, search services)
@@ -44,16 +44,20 @@ smoke:  ## check every integration handshake
 # ---- run the platform --------------------------------------------------------------------
 upload:  ## push data/landing to S3 (Snowpipe auto-ingests)
 	$(PY) alphalake upload
-backfill:  ## load files that were in S3 before notifications existed, then run tasks now
+backfill:  ## load files already landed (S3 pipes or internal COPY), then run tasks now
+ifeq ($(LANDING_MODE),s3)
 	$(PY) python scripts/run_sql.py snowflake/ops/backfill_pipes.sql
 	sleep 60
 	$(PY) python scripts/run_sql.py snowflake/ops/run_tasks_now.sql
+else
+	$(PY) python scripts/run_sql.py snowflake/ops/backfill_internal.sql
+endif
 status:  ## row counts per layer
 	$(PY) python scripts/run_sql.py snowflake/ops/status.sql
 stream:  ## live trades for 2 minutes (RATE trades/sec)
 	$(PY) alphalake stream --rate $${RATE:-5} --seconds $${SECONDS_:-120}
 dbt-build:  ## dbt snapshot + models + tests, then the semantic view
-	$(DBT) build --profiles-dir .
+	$(DBT) build --profiles-dir . --vars '{governance_mode: $(or $(GOVERNANCE_MODE),policies)}'
 	$(DBT) run-operation create_semantic_view --profiles-dir .
 dbt-docs:
 	$(DBT) docs generate --profiles-dir . && $(DBT) docs serve --profiles-dir .

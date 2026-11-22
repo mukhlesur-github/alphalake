@@ -5,7 +5,7 @@ locals {
   snowflake_role     = "alphalake-snowflake-s3-read"
   snowflake_role_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.snowflake_role}"
   # We choose the external ID ourselves. That breaks the usual chicken-and-egg loop:
-  # the integration can be created before the IAM role exists, and the role's trust
+  # the integration (setup.sql) is created before the IAM role exists, and the role's trust
   # policy references the integration's IAM user + this ID.
   external_id = "alphalake_${data.aws_caller_identity.current.account_id}"
 }
@@ -39,7 +39,7 @@ data "aws_iam_policy_document" "snowflake_trust" {
     actions = ["sts:AssumeRole"]
     principals {
       type        = "AWS"
-      identifiers = [snowflake_storage_integration_aws.landing.describe_output[0].iam_user_arn]
+      identifiers = [var.snowflake_iam_user_arn]
     }
     condition {
       test     = "StringEquals"

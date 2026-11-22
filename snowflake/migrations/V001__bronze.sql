@@ -8,10 +8,16 @@ CREATE FILE FORMAT IF NOT EXISTS FF_CSV
 CREATE FILE FORMAT IF NOT EXISTS FF_PARQUET TYPE = PARQUET;
 CREATE FILE FORMAT IF NOT EXISTS FF_JSON TYPE = JSON STRIP_OUTER_ARRAY = FALSE;
 
+{% if landing_mode == 's3' %}
 -- No AWS keys: Snowflake assumes the IAM role trusted in Terraform (external ID handshake).
 CREATE STAGE IF NOT EXISTS LANDING
   URL = 's3://{{bucket}}/landing/'
   STORAGE_INTEGRATION = ALPHALAKE_S3_INT;
+{% else %}
+-- LANDING_MODE=internal: no AWS. Files are PUT to an internal stage with the same key layout as S3.
+CREATE STAGE IF NOT EXISTS LANDING
+  ENCRYPTION = (TYPE = 'SNOWFLAKE_SSE') DIRECTORY = (ENABLE = TRUE);
+{% endif %}
 
 CREATE TABLE IF NOT EXISTS SECURITIES_RAW (
   security_id STRING, ticker STRING, isin STRING, name STRING, asset_class STRING, gics_sector STRING,
@@ -51,6 +57,15 @@ CREATE TABLE IF NOT EXISTS HOLDINGS_RAW (
 CREATE TABLE IF NOT EXISTS TRADE_EVENTS_RAW (raw VARIANT, _file STRING, _loaded_at TIMESTAMP_LTZ);
 CREATE TABLE IF NOT EXISTS DOC_PARSED_RAW  (raw VARIANT, _file STRING, _loaded_at TIMESTAMP_LTZ);
 
+{% set loads = [
+  ("SECURITIES_RAW",  "batch/securities/",  "FF_CSV"),
+  ("FUNDS_RAW",       "batch/funds/",       "FF_CSV"),
+  ("FUND_LIMITS_RAW", "batch/fund_limits/", "FF_CSV"),
+  ("CLIENTS_RAW",     "batch/clients/",     "FF_CSV"),
+  ("PRICES_RAW",      "batch/prices/",      "FF_PARQUET"),
+  ("FX_RAW",          "batch/fx/",          "FF_PARQUET"),
+  ("HOLDINGS_RAW",    "batch/holdings/",    "FF_PARQUET")] %}
+{% if landing_mode == 's3' %}
 -- Snowpipes (auto-ingest). All pipes in an account share one SQS queue: SHOW PIPES -> notification_channel,
 -- which `make wire-snowpipe` feeds back into Terraform as the S3 bucket notification target.
 {% for name, table, path, ff in [
@@ -78,3 +93,31 @@ CREATE PIPE IF NOT EXISTS PIPE_DOC_PARSED AUTO_INGEST = TRUE AS
   COPY INTO DOC_PARSED_RAW (raw, _file, _loaded_at)
   FROM (SELECT $1, METADATA$FILENAME, METADATA$START_SCAN_TIME FROM @LANDING/docs/parsed/)
   FILE_FORMAT = (FORMAT_NAME = FF_JSON);
+{% else %}
+-- Internal mode: no SQS notifications for internal stages, so one task runs the same COPYs every minute.
+-- COPY load history (64 days) skips files already loaded -> idempotent, like the pipes.
+CREATE OR REPLACE PROCEDURE LOAD_LANDING()
+RETURNS STRING LANGUAGE SQL AS
+$$
+BEGIN
+{% for table, path, ff in loads %}
+  COPY INTO {{ table }} FROM @LANDING/{{ path }}
+    FILE_FORMAT = (FORMAT_NAME = {{ ff }}) MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE
+    INCLUDE_METADATA = (_file = METADATA$FILENAME, _loaded_at = METADATA$START_SCAN_TIME);
+{% endfor %}
+  COPY INTO TRADE_EVENTS_RAW (raw, _file, _loaded_at)
+    FROM (SELECT $1, METADATA$FILENAME, METADATA$START_SCAN_TIME FROM @LANDING/trades/)
+    FILE_FORMAT = (FORMAT_NAME = FF_JSON);
+  COPY INTO DOC_PARSED_RAW (raw, _file, _loaded_at)
+    FROM (SELECT $1, METADATA$FILENAME, METADATA$START_SCAN_TIME FROM @LANDING/docs/parsed/)
+    FILE_FORMAT = (FORMAT_NAME = FF_JSON);
+  RETURN 'loaded';
+END;
+$$;
+
+CREATE OR REPLACE TASK TASK_LOAD_LANDING
+  WAREHOUSE = ALPHALAKE_WH_PIPELINE
+  SCHEDULE = '1 MINUTE'
+AS CALL LOAD_LANDING();
+ALTER TASK TASK_LOAD_LANDING RESUME;
+{% endif %}

@@ -25,10 +25,13 @@ def stream(rate: float, seconds: int, flush: int, local: bool) -> None:
     latest = sorted((s.data_dir / "landing/batch/holdings").glob("*.parquet"))[-1]
     pos = pd.read_parquet(latest).set_index(["fund_id", "security_id"]).quantity
 
-    s3 = None
-    if not local:
+    s3 = cur = None
+    if not local and s.landing_mode == "s3" and s.snowflake_auth != "session":
         from alphalake.producers.upload import s3_client
         s3 = s3_client()
+    elif not local:
+        from alphalake.common.snowflake import connect_pipeline
+        cur = connect_pipeline().cursor()
 
     today = date.today()
     seq = int(time.time()) % 1_000_000
@@ -59,10 +62,13 @@ def stream(rate: float, seconds: int, flush: int, local: bool) -> None:
         rows = inject_chaos(rng, rows)
         body = "\n".join(json.dumps(r) for r in rows) + "\n"
         key = f"landing/trades/live/{today}/batch_{datetime.now(UTC):%H%M%S%f}.jsonl"
-        if local:
+        if local or cur:
             p = s.data_dir / key
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(body)
+            if cur:
+                from alphalake.producers.upload import put_internal
+                put_internal(cur, p, key.removeprefix("landing/"))
         else:
             s3.put_object(Bucket=s.alphalake_bucket, Key=key, Body=body.encode())
         total += len(rows)

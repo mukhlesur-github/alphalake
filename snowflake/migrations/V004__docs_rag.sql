@@ -47,7 +47,7 @@ BEGIN
            c.value:section_title::STRING, c.value:page_number::NUMBER, c.value:chunk_text::STRING,
            u.raw:title::STRING, u.raw:doc_type::STRING, u.raw:fund_ticker::STRING, u.raw:access_tier::STRING,
            u.raw:publish_date::DATE,
-           SNOWFLAKE.CORTEX.EMBED_TEXT_1024('snowflake-arctic-embed-l-v2.0', c.value:chunk_text::STRING),
+           AI_EMBED('snowflake-arctic-embed-l-v2.0', c.value:chunk_text::STRING),
            'snowflake-arctic-embed-l-v2.0'
     FROM ALPHALAKE.DOCS.V_DOC_UPDATES u, LATERAL FLATTEN(input => u.raw:chunks) c;
   n_chunks := SQLROWCOUNT;

@@ -1,0 +1,15 @@
+# Read only by dbt Projects on Snowflake (Workspaces / EXECUTE DBT PROJECT); auth is the Snowflake session.
+# Local dbt keeps using profiles.yml (key-pair).
+alphalake:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: "not needed"
+      user: "not needed"
+      role: ALPHALAKE_ENGINEER
+      warehouse: ALPHALAKE_WH_PIPELINE
+      database: ALPHALAKE
+      schema: SILVER
+      threads: 8
+      query_tag: alphalake:dbt

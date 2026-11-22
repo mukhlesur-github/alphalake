@@ -11,7 +11,7 @@ AlphaLake ingests structured, semi-structured, and unstructured data through bat
 
 ```bash
 make install generate docs test     # everything that runs without accounts
-make bootstrap-sql                  # then: tf-apply, migrate, wire-snowpipe, upload, backfill, dbt-build, verify, app
+make snowflake-sql                  # then: tf-apply, migrate, wire-snowpipe, upload, backfill, dbt-build, verify, app
 make help
 ```
 

@@ -1,0 +1,17 @@
+# Streamlit in Snowflake (warehouse runtime): packages come from the Snowflake Anaconda channel only.
+name: alphalake_app
+channels:
+  - snowflake
+dependencies:
+  - streamlit
+  - altair
+  - pandas
+  - pydantic
+  - pydantic-settings
+  # pinned: the channel's default resolution pairs a newer langgraph-checkpoint with an older langchain-core
+  - langgraph=1.2.19
+  - langgraph-checkpoint=4.3.1
+  - langchain-core=1.7.0
+  - sqlglot
+  - jinja2
+  - snowflake-snowpark-python
