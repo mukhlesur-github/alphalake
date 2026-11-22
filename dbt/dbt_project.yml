@@ -23,3 +23,8 @@ models:
     semantic:
       +schema: SEMANTIC
       +materialized: view
+
+# Standard edition: masking / row access policies are unavailable, so dim_client is a secure view.
+# Set here (not only via --vars) because dbt Projects on Snowflake never reads .env.
+vars:
+  governance_mode: views
