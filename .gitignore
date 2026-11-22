@@ -17,3 +17,6 @@ dbt/dbt_packages/
 .ruff_cache/
 .pytest_cache/
 infra/snowflake/setup.sql
+# Snowsight Workspace scratch files
+Untitled*.sql
+pytest-cache-files-*/

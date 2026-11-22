@@ -4,14 +4,16 @@
 
 AlphaLake ingests structured, semi-structured, and unstructured data through batch, streaming, and event-driven pipelines; models it into a governed Snowflake warehouse with a semantic layer; and exposes it through a Streamlit app with an AI assistant that answers questions using both warehouse metrics and documents — with citations.
 
-> Status: **3-day MVP built, not yet run against live accounts** ([ADR-0012](docs/adr/0012-three-day-zero-cost-mvp.md)).
-> Local parts are tested (`make test`: 31 passing). Next: create the accounts ([setup](docs/setup-accounts.md)) and follow the [runbook](docs/runbook.md).
+> Status: **3-day MVP running end to end on live accounts** (verified 2026-11-22, [ADR-0012](docs/adr/0012-three-day-zero-cost-mvp.md)):
+> S3 → Snowpipe → Streams/Tasks → dbt (42/42) → semantic layer → Cortex Search + agent → Streamlit (local and in Snowflake).
+> `make test`: 31 passing; `make verify`: all live assertions pass. The trial account is Standard edition, so PII
+> governance uses the secure-view fallback (`GOVERNANCE_MODE=views`) instead of masking / row access policies.
 
 ## Quick start
 
 ```bash
 make install generate docs test     # everything that runs without accounts
-make snowflake-sql                  # then: tf-apply, migrate, wire-snowpipe, upload, backfill, dbt-build, verify, app
+make snowflake-sql                  # then: tf-apply, smoke, migrate, wire-snowpipe, upload, backfill, dbt-build, verify, ask, app
 make help
 ```
 
@@ -59,9 +61,9 @@ Full detail: [`docs/architecture.md`](docs/architecture.md)
 
 | Concern | Choice |
 |---|---|
-| Warehouse | Snowflake (Enterprise edition, hosted on AWS) |
+| Warehouse | Snowflake on AWS (Enterprise for masking / row access policies; Standard works via secure views) |
 | Cloud | AWS — S3, IAM, Budgets (MVP); SQS, Lambda, Kinesis Data Firehose, Secrets Manager in the full design |
-| Infrastructure as Code | Terraform (AWS + Snowflake providers), versioned SQL migrations (`alphalake migrate`) |
+| Infrastructure as Code | Idempotent Snowflake setup SQL (`infra/snowflake/setup.sql`), Terraform for AWS, versioned SQL migrations (`alphalake migrate`) |
 | Layers | Medallion: Bronze → Silver → Gold (Kimball star schema) → Semantic |
 | Transformation | Streams & Tasks with hand-written SQL (CDC, SCD2 MERGE) + dbt Core (`dbt-snowflake`) |
 | CDC / incremental | Snowflake Streams, Tasks, Dynamic Tables |
@@ -69,8 +71,8 @@ Full detail: [`docs/architecture.md`](docs/architecture.md)
 | Document parsing | PyMuPDF (layout-aware, tables → markdown), SHA-256 incremental sync, PII redaction |
 | Embeddings & vector search | Snowflake Cortex `EMBED_TEXT_1024`, `VECTOR` type, Cortex Search (hybrid vector + BM25) |
 | Agent | LangGraph: SQL tool (tool calling / governed text-to-SQL) + RAG tool; inherits the user's Snowflake role |
-| LLM | Snowflake Cortex `COMPLETE` (MVP; GPT-4o on Foundry in the full design) |
-| UI | Streamlit (local → Streamlit in Snowflake) |
+| LLM | Snowflake Cortex `AI_COMPLETE` (MVP, default `claude-sonnet-4-5`; GPT-4o on Foundry in the full design) |
+| UI | Streamlit, locally and in Snowflake (one app per persona) |
 | Language | Python 3.12 (Pydantic v2, asyncio), SQL |
 | Quality | dbt tests, pytest, ruff, mypy, pre-commit, RAG/agent eval harness |
 | CI/CD | GitHub Actions |
@@ -105,8 +107,8 @@ Full detail: [`docs/architecture.md`](docs/architecture.md)
 ## Repository layout (MVP)
 
 ```
-├── infra/terraform/        # AWS (bucket, IAM role, budget) + Snowflake (DB, schemas, warehouses, RBAC, users, integration)
-├── infra/bootstrap/        # one-time SQL for the Terraform service user
+├── infra/snowflake/        # setup.sql.tmpl (DB, schemas, warehouses, RBAC, service users, S3 integration) + streamlit.sql (SiS apps)
+├── infra/terraform/        # AWS only: bucket, IAM role trusting ALPHALAKE_S3_INT, Snowpipe notification, budget
 ├── snowflake/migrations/   # V001 bronze+pipes · V002 trade CDC · V003 SCD2 DIM_SECURITY · V004 docs+Cortex Search · V005 governance
 ├── snowflake/ops/          # backfill, status, live verification SQL
 ├── dbt/                    # staging → intermediate → GOLD star schema → SEMANTIC views (+ semantic view macro), tests
@@ -116,8 +118,8 @@ Full detail: [`docs/architecture.md`](docs/architecture.md)
 │   ├── docs/               # PyMuPDF layout-aware parser, PII redaction, SHA-256 incremental sync
 │   ├── agent/              # metric catalogue (tool calling), sqlglot guard, Cortex backends, LangGraph graph
 │   └── common/             # settings, key-pair connections, migration runner, smoke test
-├── app/streamlit_app.py
+├── app/                    # streamlit_app.py + environment.yml (Streamlit in Snowflake packages)
 ├── tests/                  # 31 offline tests
-├── scripts/                # key generation, bootstrap render, Terraform ↔ .env / Snowpipe wiring
+├── scripts/                # key generation, setup.sql render, Terraform ↔ .env / Snowpipe wiring
 └── Makefile
 ```

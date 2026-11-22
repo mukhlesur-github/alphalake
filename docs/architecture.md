@@ -1,6 +1,6 @@
 # Architecture
 
-> **MVP note (2026-11-18):** the build follows [ADR-0012](adr/0012-three-day-zero-cost-mvp.md): Cortex `COMPLETE` instead of Foundry GPT-4o, S3 micro-batch files instead of Firehose, local document parsing instead of Lambda, no CI/SiS. This document describes the full target design.
+> **MVP note (2026-11-18, updated 2026-11-22):** the build follows [ADR-0012](adr/0012-three-day-zero-cost-mvp.md): Cortex `AI_COMPLETE` instead of Foundry GPT-4o, S3 micro-batch files instead of Firehose, local document parsing instead of Lambda, no CI. Streamlit in Snowflake now runs one app per persona; on a Standard-edition account PII governance uses a secure view instead of masking / row access policies. This document describes the full target design.
 
 ## 1. Overview
 

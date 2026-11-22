@@ -16,8 +16,8 @@ class Settings(BaseSettings):
     alphalake_bucket: str = ""
     # "internal" = Snowflake internal stage + COPY task (no AWS); "s3" = S3 + Snowpipe auto-ingest
     landing_mode: str = "internal"
-    # "policies" = masking + row access policies (Enterprise); "views" = secure-view fallback (Standard)
-    governance_mode: str = "policies"
+    # "views" = secure-view governance (any edition, matches dbt_project.yml); "policies" = masking + row access (Enterprise)
+    governance_mode: str = "views"
 
     snowflake_account: str = ""
     snowflake_database: str = "ALPHALAKE"

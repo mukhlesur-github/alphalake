@@ -19,3 +19,9 @@ Snowflake **Enterprise** edition, hosted in the **same AWS region** as our S3 bu
 - Same region avoids egress charges and keeps Snowpipe latency low.
 - Must manage cost actively: X-Small warehouses, 60-second auto-suspend, resource monitors.
 - After the trial (30 days / ~$400), the account moves to pay-as-you-go. Suspend tasks when not actively working.
+
+## Update (2026-11-22)
+The trial account was provisioned as **Standard** edition, where masking and row access policies fail with
+`Unsupported feature`. Rather than block on an upgrade, `GOVERNANCE_MODE=views` puts the same rules in a secure view
+(`GOLD.DIM_CLIENT`: PII masked and Institutional clients hidden unless the PM or engineer role is in session).
+Enterprise remains the target; switching back is `GOVERNANCE_MODE=policies`, `make migrate`, `make dbt-build`.

@@ -2,14 +2,14 @@
 
 ## MVP (3 days, $0): current plan
 
-Scope and deviations: [ADR-0012](adr/0012-three-day-zero-cost-mvp.md). Code for all three days is written; local parts are tested.
-Running it against the accounts follows the [runbook](runbook.md).
+Scope and deviations: [ADR-0012](adr/0012-three-day-zero-cost-mvp.md). All three days are built and verified end to end
+on the live accounts (2026-11-22) by following the [runbook](runbook.md).
 
 | Day | Build | Status |
 |---|---|---|
-| 1 | Accounts, Terraform (S3, IAM ↔ storage integration, RBAC, warehouses, users), migrations, Snowpipe wiring, synthetic data, Bronze | Code done · needs accounts |
-| 2 | Trade CDC (Streams + Tasks), hand-written SCD2, dbt Silver/Gold/SEMANTIC, semantic view, tests | Code done · needs accounts |
-| 3 | Documents → Cortex Search (two tiered services), LangGraph agent (tool calling + governed text-to-SQL), Streamlit | Code done · agent graph tested with fakes |
+| 1 | Accounts, `setup.sql` (RBAC, warehouses, users, storage integration), Terraform (S3, IAM role), migrations, Snowpipe wiring, synthetic data, Bronze | Done · live |
+| 2 | Trade CDC (Streams + Tasks), hand-written SCD2, dbt Silver/Gold/SEMANTIC, semantic view, tests | Done · live (governance via secure view on Standard edition) |
+| 3 | Documents → Cortex Search (two tiered services), LangGraph agent (tool calling + governed text-to-SQL), Streamlit | Done · live (local app + Streamlit in Snowflake per persona) |
 
 Phases 0–8 below are the full design; the MVP covers the core of Phases 0–3 and 5–7 and part of Phase 4 (file micro-batches instead of Firehose).
 

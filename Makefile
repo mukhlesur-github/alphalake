@@ -29,7 +29,7 @@ snowflake-sql:  ## render infra/snowflake/setup.sql (roles, warehouses, users, i
 	$(PY) python scripts/render_snowflake_setup.py
 tf-init:
 	$(TF) init
-tf-plan:  ## terraform plan (AWS + Snowflake)
+tf-plan:  ## terraform plan (AWS only)
 	$(TF) plan
 tf-apply:  ## AWS only: bucket, IAM role (trusts ALPHALAKE_S3_INT), budget
 	$(TF) apply
@@ -57,7 +57,7 @@ status:  ## row counts per layer
 stream:  ## live trades for 2 minutes (RATE trades/sec)
 	$(PY) alphalake stream --rate $${RATE:-5} --seconds $${SECONDS_:-120}
 dbt-build:  ## dbt snapshot + models + tests, then the semantic view
-	$(DBT) build --profiles-dir . --vars '{governance_mode: $(or $(GOVERNANCE_MODE),policies)}'
+	$(DBT) build --profiles-dir . --vars '{governance_mode: $(or $(GOVERNANCE_MODE),views)}'
 	$(DBT) run-operation create_semantic_view --profiles-dir .
 dbt-docs:
 	$(DBT) docs generate --profiles-dir . && $(DBT) docs serve --profiles-dir .
