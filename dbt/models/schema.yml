@@ -1,0 +1,35 @@
+version: 2
+models:
+  - name: dim_fund
+    columns:
+      - name: fund_sk
+        tests: [unique, not_null]
+  - name: dim_client
+    columns:
+      - name: client_sk
+        tests: [unique, not_null]
+      - name: segment
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["Retail", "HNW", "Institutional"]
+  - name: fact_portfolio_trades
+    columns:
+      - name: trade_id
+        tests: [unique, not_null]
+      - name: security_sk
+        tests: [not_null]
+      - name: side
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["BUY", "SELL"]
+  - name: fact_daily_holdings
+    columns:
+      - name: holding_id
+        tests: [unique, not_null]
+  - name: fact_holdings_reconciliation
+    tests:
+      - dbt_breaks_under_threshold:
+          arguments:
+            max_pct: 2

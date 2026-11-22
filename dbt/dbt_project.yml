@@ -1,0 +1,25 @@
+name: alphalake
+version: "0.1.0"
+config-version: 2
+profile: alphalake
+
+model-paths: ["models"]
+snapshot-paths: ["snapshots"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+
+models:
+  alphalake:
+    staging:
+      +schema: SILVER
+      +materialized: view
+    intermediate:
+      +schema: SILVER
+      +materialized: table
+      +transient: true
+    marts:
+      +schema: GOLD
+      +materialized: table
+    semantic:
+      +schema: SEMANTIC
+      +materialized: view

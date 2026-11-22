@@ -1,0 +1,19 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+keys/*
+!keys/.gitkeep
+data/
+.state/
+# terraform
+infra/terraform/.terraform/
+infra/terraform/*.tfstate*
+infra/terraform/terraform.tfvars
+# dbt
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+.ruff_cache/
+.pytest_cache/
+infra/bootstrap/bootstrap.sql

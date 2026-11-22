@@ -1,0 +1,28 @@
+version: 2
+sources:
+  - name: bronze
+    database: ALPHALAKE
+    schema: BRONZE
+    tables:
+      - name: funds_raw
+      - name: fund_limits_raw
+      - name: clients_raw
+      - name: prices_raw
+      - name: fx_raw
+      - name: holdings_raw
+  - name: silver_tasks
+    description: Tables maintained by Streams + Tasks (snowflake/migrations), not by dbt
+    database: ALPHALAKE
+    schema: SILVER
+    tables:
+      - name: trades_current
+      - name: quarantine_trade_events
+  - name: gold_tasks
+    database: ALPHALAKE
+    schema: GOLD
+    tables:
+      - name: dim_security
+        description: Hand-written SCD2 MERGE (V003)
+        columns:
+          - name: security_sk
+            tests: [unique, not_null]

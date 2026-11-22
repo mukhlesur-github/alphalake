@@ -1,0 +1,15 @@
+# Key-pair auth as the pipeline service user. Values come from .env (exported by the Makefile).
+alphalake:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_PIPELINE_USER', 'SVC_ALPHALAKE_PIPELINE') }}"
+      private_key_path: "{{ env_var('DBT_PRIVATE_KEY_PATH') }}"
+      role: "{{ env_var('SNOWFLAKE_PIPELINE_ROLE', 'ALPHALAKE_ENGINEER') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_PIPELINE_WAREHOUSE', 'ALPHALAKE_WH_PIPELINE') }}"
+      database: ALPHALAKE
+      schema: SILVER
+      threads: 4
+      query_tag: alphalake:dbt
